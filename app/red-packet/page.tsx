@@ -10,7 +10,7 @@ interface RedPacket {
   creator_name: string;
   creator_avatar: string;
   remaining_copies: number;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'expired';
 }
 
 const DEFAULT_AVATAR = 'https://dkfile.net/uploads/avatars/avatar_1037_2b899c87.jpeg';
@@ -79,7 +79,7 @@ export default function RedPacketTool() {
   const [uv, setUv] = useState<number | null>(null);
   const [myVisits, setMyVisits] = useState<number | null>(null);
   const [myIp, setMyIp] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'expired'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'expired'>('active');
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showTop, setShowTop] = useState(false);
   
@@ -317,18 +317,18 @@ export default function RedPacketTool() {
       await navigator.clipboard.writeText(packet.content);
       showToast('复制成功！');
 
-      // Update count if not owner (Simulated: Assume current user is NOT owner for demo logic, 
-      // or we track copied IDs in localStorage to prevent double count decrement from same user)
+      const isOwner = (sanitizeText(creatorName).trim() === sanitizeText(packet.creator_name).trim())
+        || (sanitizeUrl(avatarUrl) && sanitizeUrl(avatarUrl) === sanitizeUrl(packet.creator_avatar));
+      if (isOwner) {
+        showToast('这是你自己发布的，不扣次数');
+        return;
+      }
+
+      // 防重复：同一用户不重复扣减
       const copiedKey = `copied_packets`;
       const copiedList = JSON.parse(localStorage.getItem(copiedKey) || '[]');
       
       if (copiedList.includes(packet.id)) {
-        // Already copied by this user, show toast but don't decrement
-        // But since we already copied to clipboard above, maybe we should warn BEFORE copying?
-        // User request: "已添加的红包口令，被复制后若有剩余数量是不同的人可以继续复制，同一个人不允许复制多次。"
-        // Interpretation: Same person cannot "claim" (decrement count) twice. 
-        // But usually "copy" implies claiming.
-        // Let's allow copy (clipboard) but show message "You already claimed this".
         showToast('您已领取过该红包，留给其他人吧！');
         return;
       }
@@ -361,9 +361,10 @@ export default function RedPacketTool() {
   };
 
   const handleShare = async (packet: RedPacket) => {
-    const packetUrl = `${window.location.origin}/red-packet?id=${packet.id}`;
-    const shareText = `找朋友助力：${packet.creator_name}\n口令：${packet.content}\n链接：${packetUrl}`;
-    const shareData = { title: '找朋友助力', text: shareText, url: packetUrl };
+    const packetUrl = `${window.location.origin}/red-packet/${packet.id}`;
+    const invite = `来自 ${packet.creator_name} 的邀请：复制口令即可助力领取福利`;
+    const shareText = `${invite}\n口令：${packet.content}\n链接：${packetUrl}`;
+    const shareData = { title: 'AI365 · 找朋友助力', text: shareText, url: packetUrl };
     try {
       if ((navigator as any).share) {
         await (navigator as any).share(shareData);
@@ -379,7 +380,7 @@ export default function RedPacketTool() {
   };
 
   const generateShareImage = async (packet: RedPacket) => {
-    const packetUrl = `${window.location.origin}/red-packet?id=${packet.id}`;
+    const packetUrl = `${window.location.origin}/red-packet/${packet.id}`;
     const canvas = document.createElement('canvas');
     canvas.width = 720;
     canvas.height = 900;
@@ -685,11 +686,17 @@ export default function RedPacketTool() {
                         </p>
                       </div>
                       <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        packet.status === 'active' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-500'
+                        packet.status === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : packet.status === 'expired'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {packet.status === 'active' ? `剩余 ${packet.remaining_copies} 次` : '已抢完'}
+                        {packet.status === 'active' 
+                          ? `剩余 ${packet.remaining_copies} 次`
+                          : packet.status === 'expired'
+                            ? `已过期 · 余 ${packet.remaining_copies} 次`
+                            : '已完成'}
                       </div>
                     </div>
                     
