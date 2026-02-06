@@ -81,6 +81,7 @@ export default function RedPacketTool() {
   const [myIp, setMyIp] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'expired'>('all');
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [showTop, setShowTop] = useState(false);
   
   // Form State
   const [newContent, setNewContent] = useState('');
@@ -100,13 +101,17 @@ export default function RedPacketTool() {
       query = query.or(`content.ilike.%${searchTerm}%,creator_name.ilike.%${searchTerm}%`);
     }
 
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    if (filterStatus === 'active') {
-      query = query.eq('status', 'active');
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+    if (filterStatus === 'all') {
+      query = query.gte('created_at', start).lte('created_at', end);
+    } else if (filterStatus === 'active') {
+      query = query.eq('status', 'active').gte('created_at', start).lte('created_at', end);
     } else if (filterStatus === 'completed') {
-      query = query.eq('status', 'completed');
+      query = query.eq('status', 'completed').gte('created_at', start).lte('created_at', end);
     } else if (filterStatus === 'expired') {
-      query = query.lt('created_at', sevenDaysAgo);
+      query = query.or(`status.eq.expired,created_at.lt.${start},created_at.gt.${end}`);
     }
 
     const { data, error } = await query;
@@ -129,8 +134,7 @@ export default function RedPacketTool() {
         setMyIp(ip);
         await supabase.from('page_views').insert([{
           page_path: '/red-packet',
-          ip_address: ip,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
+          ip_address: ip
         }]);
         const { data } = await supabase
           .from('page_views')
@@ -148,6 +152,18 @@ export default function RedPacketTool() {
       }
     };
     initTracking();
+    (async () => {
+      try {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+        await supabase
+          .from('red_packets')
+          .update({ status: 'expired' })
+          .or(`created_at.lt.${start},created_at.gt.${end}`)
+          .eq('status', 'active');
+      } catch {}
+    })();
 
     // Daily purge: delete completed older than 7 days, run at most once per day
     const lastPurge = localStorage.getItem('rp_last_purge');
@@ -214,7 +230,16 @@ export default function RedPacketTool() {
       fetchPackets();
     }, 500);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchTerm, filterStatus]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setShowTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -579,46 +604,46 @@ export default function RedPacketTool() {
           </form>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(sanitizeText(e.target.value))}
-            className="w-full bg-white/80 border border-gray-200 rounded-2xl px-5 py-3 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-            placeholder="搜索昵称或口令..."
-          />
-          <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        {/* Filters and Language */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-xl p-1">
-            {(['all','active','completed','expired'] as const).map(s => (
+        <div className="sticky top-0 z-20 bg-white/70 backdrop-blur border-b border-gray-100 -mx-4 px-4 py-3 mb-6">
+          <div className="relative mb-3">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(sanitizeText(e.target.value))}
+              className="w-full bg-white/80 border border-gray-200 rounded-2xl px-5 py-3 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+              placeholder="搜索昵称或口令..."
+            />
+            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchTerm && (
               <button
-                key={s}
-                onClick={() => setFilterStatus(s)}
-                className={`px-3 py-1.5 text-xs rounded-lg ${filterStatus===s ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-white'}`}
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                {s==='all'?'全部':s==='active'?'进行中':s==='completed'?'已完成':'已过期'}
+                ✕
               </button>
-            ))}
+            )}
           </div>
-          <button
-            onClick={() => setLang(lang==='zh'?'en':'zh')}
-            className="px-3 py-1.5 rounded-lg bg-white/70 border border-gray-200 text-gray-700 text-xs hover:bg-white transition"
-          >
-            {lang==='zh'?'中文':'English'}
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-xl p-1">
+              {(['all','active','completed','expired'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  className={`px-3 py-1.5 text-xs rounded-lg ${filterStatus===s ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-white'}`}
+                >
+                  {s==='all'?'全部':s==='active'?'进行中':s==='completed'?'已完成':'已过期'}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setLang(lang==='zh'?'en':'zh')}
+              className="px-3 py-1.5 rounded-lg bg-white/70 border border-gray-200 text-gray-700 text-xs hover:bg-white transition"
+            >
+              {lang==='zh'?'中文':'English'}
+            </button>
+          </div>
         </div>
 
         {/* List */}
@@ -724,6 +749,19 @@ export default function RedPacketTool() {
           )}
         </div>
       </main>
+
+      {showTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center active:scale-95"
+          aria-label="返回顶部"
+          title="返回顶部"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5l-7 7m7-7l7 7M12 5v14" />
+          </svg>
+        </button>
+      )}
 
       <Footer pv={pv} uv={uv} myVisits={myVisits} />
     </div>
