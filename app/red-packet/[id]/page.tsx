@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const packet = await getPacket(params.id);
   const name = packet?.creator_name || '好友';
   const content = packet?.content || '口令待查看';
-  const title = `AI365 · 找朋友助力`;
+  const title = `红包口令助力`;
   const description = `来自 ${name} 的邀请：${content.slice(0, 60)}…（复制口令即可助力，3次有效）`;
   const image = packet?.creator_avatar || DEFAULT_AVATAR;
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://worthlist.vercel.app'}/red-packet/${params.id}`;

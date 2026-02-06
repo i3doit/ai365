@@ -82,6 +82,9 @@ export default function RedPacketTool() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'expired'>('active');
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showTop, setShowTop] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 30;
+  const [hasMore, setHasMore] = useState(false);
   
   // Form State
   const [newContent, setNewContent] = useState('');
@@ -90,11 +93,14 @@ export default function RedPacketTool() {
   const [avatarTouched, setAvatarTouched] = useState(false);
 
   // Fetch Data
-  const fetchPackets = async () => {
+  const fetchPackets = async (reset = false) => {
+    if (reset) {
+      setPage(1);
+    }
     setLoading(true);
     let query = supabase
       .from('red_packets')
-      .select('*')
+      .select('id,created_at,content,creator_name,creator_avatar,remaining_copies,status')
       .order('created_at', { ascending: false });
 
     if (searchTerm) {
@@ -113,13 +119,23 @@ export default function RedPacketTool() {
     } else if (filterStatus === 'expired') {
       query = query.or(`status.eq.expired,created_at.lt.${start},created_at.gt.${end}`);
     }
+    const from = reset ? 0 : packets.length;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
 
     const { data, error } = await query;
     if (error) {
       console.error('Error fetching packets:', error);
       showToast('获取数据失败');
     } else {
-      setPackets(data || []);
+      const list = data || [];
+      if (reset) {
+        setPackets(list);
+      } else {
+        setPackets(prev => [...prev, ...list]);
+      }
+      setHasMore(list.length === pageSize);
+      if (!reset) setPage(p => p + 1);
     }
     setLoading(false);
   };
@@ -233,7 +249,7 @@ export default function RedPacketTool() {
   // Search Effect
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchPackets();
+      fetchPackets(true);
     }, 500);
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, filterStatus]);
@@ -293,10 +309,13 @@ export default function RedPacketTool() {
     }
 
     try {
+      const random6 = Math.random().toString(36).slice(2, 8);
+      const finalName = sanitizeText((creatorName || '').trim()) || `新用户${random6}`;
+      const finalAvatar = sanitizeUrl(avatarUrl) || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(finalName)}`;
       const { error } = await supabase.from('red_packets').insert([{
         content: sanitizeText(newContent.trim()),
-        creator_name: sanitizeText(creatorName.trim() || '艾兜兜儿'),
-        creator_avatar: sanitizeUrl(avatarUrl || DEFAULT_AVATAR),
+        creator_name: finalName,
+        creator_avatar: finalAvatar,
         remaining_copies: 3,
         status: 'active'
       }]);
@@ -305,7 +324,7 @@ export default function RedPacketTool() {
 
       showToast('发布成功！');
       setNewContent('');
-      fetchPackets();
+      fetchPackets(true);
     } catch (error) {
       console.error('Error creating packet:', error);
       showToast('发布失败，请重试');
@@ -313,6 +332,10 @@ export default function RedPacketTool() {
   };
 
   const handleCopy = async (packet: RedPacket) => {
+    if (packet.status === 'expired') {
+      showToast('该口令已过期，请复制最新有效口令');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(packet.content);
       showToast('复制成功！');
@@ -361,10 +384,14 @@ export default function RedPacketTool() {
   };
 
   const handleShare = async (packet: RedPacket) => {
+    if (packet.status === 'expired') {
+      showToast('该口令已过期，无法助力');
+      return;
+    }
     const packetUrl = `${window.location.origin}/red-packet/${packet.id}`;
     const invite = `来自 ${packet.creator_name} 的邀请：复制口令即可助力领取福利`;
     const shareText = `${invite}\n口令：${packet.content}\n链接：${packetUrl}`;
-    const shareData = { title: 'AI365 · 找朋友助力', text: shareText, url: packetUrl };
+    const shareData = { title: '红包口令助力', text: shareText, url: packetUrl };
     try {
       if ((navigator as any).share) {
         await (navigator as any).share(shareData);
@@ -380,6 +407,10 @@ export default function RedPacketTool() {
   };
 
   const generateShareImage = async (packet: RedPacket) => {
+    if (packet.status === 'expired') {
+      showToast('该口令已过期，无法下载分享图');
+      return;
+    }
     const packetUrl = `${window.location.origin}/red-packet/${packet.id}`;
     const canvas = document.createElement('canvas');
     canvas.width = 720;
@@ -708,7 +739,7 @@ export default function RedPacketTool() {
                       <div className="flex items-center gap-4">
                         <button
                           onClick={() => handleCopy(packet)}
-                          disabled={packet.status === 'completed'}
+                          disabled={packet.status === 'completed' || packet.status === 'expired'}
                           title="复制"
                           aria-label="复制"
                           className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all ${
@@ -729,7 +760,11 @@ export default function RedPacketTool() {
                           onClick={() => handleShare(packet)}
                           title="助力"
                           aria-label="助力"
-                          className="w-12 h-12 flex items-center justify-center rounded-lg transition-all bg-pink-50 text-pink-600 hover:bg-pink-100 active:scale-95"
+                          className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all ${
+                            packet.status === 'active'
+                              ? 'bg-pink-50 text-pink-600 hover:bg-pink-100 active:scale-95'
+                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
                         >
                           <div className="flex flex-col items-center">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -743,7 +778,11 @@ export default function RedPacketTool() {
                           onClick={() => generateShareImage(packet)}
                           title="下载"
                           aria-label="下载"
-                          className="w-12 h-12 flex items-center justify-center rounded-lg transition-all bg-green-50 text-green-600 hover:bg-green-100 active:scale-95"
+                          className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all ${
+                            packet.status === 'active'
+                              ? 'bg-green-50 text-green-600 hover:bg-green-100 active:scale-95'
+                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
                         >
                           <div className="flex flex-col items-center">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -762,6 +801,17 @@ export default function RedPacketTool() {
           )}
         </div>
       </main>
+
+      {!loading && hasMore && (
+        <div className="text-center my-4">
+          <button
+            onClick={() => fetchPackets(false)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-sm hover:bg-black transition"
+          >
+            加载更多
+          </button>
+        </div>
+      )}
 
       {showTop && (
         <button
