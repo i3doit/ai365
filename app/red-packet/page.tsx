@@ -15,6 +15,14 @@ interface RedPacket {
 
 const DEFAULT_AVATAR = 'https://dkfile.net/uploads/avatars/avatar_1037_2b899c87.jpeg';
 const ALT_AVATAR = 'https://profile-avatar.csdnimg.cn/22f8b0128b694047beb93057ddc0d7cc_kq8819.jpg!1';
+const PRESET_AVATARS = [
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Felix',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Aneka',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Zoe',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Leo',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Milo',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Sasha'
+];
 
 const Footer = ({ pv, uv, myVisits }: { pv?: number | null, uv?: number | null, myVisits?: number | null }) => {
   const [year, setYear] = useState(2026);
@@ -110,14 +118,21 @@ export default function RedPacketTool() {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+    
+    // Logic:
+    // All: Today's created packets (00:00 - 23:59)
+    // Active: Today's AND remaining > 0 AND status='active'
+    // Completed: Today's AND remaining == 0
+    // Expired: (Not Today OR status='expired') AND remaining > 0
+    
     if (filterStatus === 'all') {
       query = query.gte('created_at', start).lte('created_at', end);
     } else if (filterStatus === 'active') {
-      query = query.eq('status', 'active').gte('created_at', start).lte('created_at', end);
+      query = query.eq('status', 'active').gt('remaining_copies', 0).gte('created_at', start).lte('created_at', end);
     } else if (filterStatus === 'completed') {
-      query = query.eq('status', 'completed').gte('created_at', start).lte('created_at', end);
+      query = query.eq('remaining_copies', 0).gte('created_at', start).lte('created_at', end);
     } else if (filterStatus === 'expired') {
-      query = query.or(`status.eq.expired,created_at.lt.${start},created_at.gt.${end}`);
+      query = query.gt('remaining_copies', 0).or(`status.eq.expired,created_at.lt.${start},created_at.gt.${end}`);
     }
     const from = reset ? 0 : packets.length;
     const to = from + pageSize - 1;
@@ -343,7 +358,8 @@ export default function RedPacketTool() {
       const isOwner = (sanitizeText(creatorName).trim() === sanitizeText(packet.creator_name).trim())
         || (sanitizeUrl(avatarUrl) && sanitizeUrl(avatarUrl) === sanitizeUrl(packet.creator_avatar));
       if (isOwner) {
-        showToast('这是你自己发布的，不扣次数');
+        await navigator.clipboard.writeText(packet.content);
+        showToast('这是你自己发布的口令，已复制（不扣次数）');
         return;
       }
 
@@ -389,7 +405,7 @@ export default function RedPacketTool() {
       return;
     }
     const packetUrl = `${window.location.origin}/red-packet/${packet.id}`;
-    const invite = `来自 ${packet.creator_name} 的邀请：复制口令即可助力领取福利`;
+    const invite = `来自 ${packet.creator_name} 的邀请 (剩${packet.remaining_copies}个)：复制口令即可助力领取福利`;
     const shareText = `${invite}\n口令：${packet.content}\n链接：${packetUrl}`;
     const shareData = { title: '红包口令助力', text: shareText, url: packetUrl };
     try {
@@ -573,8 +589,19 @@ export default function RedPacketTool() {
                   type="text"
                   value={avatarUrl}
                   onChange={(e) => { setAvatarUrl(e.target.value); setAvatarTouched(true); }}
+                  onFocus={async () => {
+                    setAvatarUrl('');
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text.startsWith('http')) {
+                        setAvatarUrl(text);
+                        setAvatarTouched(true);
+                        showToast('已自动粘贴头像链接');
+                      }
+                    } catch {}
+                  }}
                   className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-red-500/20 focus:bg-white transition-all"
-                  placeholder="例如：https://api.dicebear.com/7.x/identicon/svg?seed=你的昵称"
+                  placeholder="粘贴URL或点击下方头像"
                 />
                 {avatarUrl && (
                   <button
@@ -586,20 +613,30 @@ export default function RedPacketTool() {
                   </button>
                 )}
               </div>
-              <div className="mt-2 flex items-center gap-3">
-                <img
-                  src={avatarUrl || DEFAULT_AVATAR}
-                  alt="avatar-preview"
-                  className="w-8 h-8 rounded-full border border-gray-200 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = ALT_AVATAR; }}
-                />
-                <button
-                  type="button"
-                  onClick={() => { setAvatarUrl(`https://api.dicebear.com/7.x/identicon/svg?seed=${Date.now()}`); setAvatarTouched(true); }}
-                  className="text-xs px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                >
-                  随机头像
-                </button>
+              
+              <div className="mt-3">
+                 <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => { setAvatarUrl(`https://api.dicebear.com/7.x/identicon/svg?seed=${Date.now()}`); setAvatarTouched(true); }}
+                      className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors border border-gray-200"
+                      title="随机生成"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                    {PRESET_AVATARS.map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setAvatarUrl(url); setAvatarTouched(true); }}
+                        className="flex-shrink-0 w-10 h-10 rounded-full border border-gray-200 overflow-hidden hover:ring-2 hover:ring-offset-1 hover:ring-red-500 transition-all"
+                      >
+                        <img src={url} alt={`avatar-${i}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                 </div>
               </div>
             </div>
 
