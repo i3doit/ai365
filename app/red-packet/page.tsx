@@ -128,9 +128,15 @@ export default function RedPacketTool() {
     fetchPackets();
     const initTracking = async () => {
       try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ipJson = await ipRes.json();
-        const ip = ipJson?.ip || 'unknown';
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2000);
+        let ip = 'unknown';
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+          const ipJson = await ipRes.json();
+          ip = ipJson?.ip || 'unknown';
+        } catch {}
+        clearTimeout(timer);
         setMyIp(ip);
         await supabase.from('page_views').insert([{
           page_path: '/red-packet',
