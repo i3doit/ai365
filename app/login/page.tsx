@@ -14,6 +14,7 @@ function clean(s: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [nextPath, setNextPath] = useState('/hk-order');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -23,13 +24,18 @@ export default function LoginPage() {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      if (next) setNextPath(next);
+    } catch {}
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        router.push('/hk-order');
+        router.push(nextPath);
       }
     })();
-  }, [router]);
+  }, [router, nextPath]);
 
   const signInGoogle = async () => {
     setMsg('');
@@ -37,7 +43,7 @@ export default function LoginPage() {
     try {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/login` }
+        options: { redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}` }
       });
     } catch (e: any) {
       setMsg('谷歌登录未启用，请使用邮箱或手机号登录');
@@ -56,7 +62,7 @@ export default function LoginPage() {
         email: v,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/login`
+          emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
         }
       });
       setMsg('已发送邮箱登录链接，请前往邮箱点击登录');
@@ -116,46 +122,46 @@ export default function LoginPage() {
     }
   };
 
-  const signInPhonePassword = async () => {
+  const signInEmailPassword = async () => {
     setMsg('');
-    const vPhone = clean(phone);
+    const vEmail = clean(email);
     const vPw = clean(password);
     try {
-      phoneSchema.parse(vPhone);
+      emailSchema.parse(vEmail);
       pwSchema.parse(vPw);
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
-        phone: vPhone,
+        email: vEmail,
         password: vPw
       });
       if (error) throw error;
       if (data.user) {
-        router.push('/hk-order');
+        router.push(nextPath);
       } else {
-        setMsg('登录失败，请检查手机号或密码');
+        setMsg('登录失败，请检查邮箱或密码');
       }
     } catch {
-      setMsg('登录失败，请检查手机号或密码');
+      setMsg('登录失败，请检查邮箱或密码');
     } finally {
       setLoading(false);
     }
   };
 
-  const signUpPhonePassword = async () => {
+  const signUpEmailPassword = async () => {
     setMsg('');
-    const vPhone = clean(phone);
+    const vEmail = clean(email);
     const vPw = clean(password);
     try {
-      phoneSchema.parse(vPhone);
+      emailSchema.parse(vEmail);
       pwSchema.parse(vPw);
       setLoading(true);
       const { data, error } = await supabase.auth.signUp({
-        phone: vPhone,
+        email: vEmail,
         password: vPw
       });
       if (error) throw error;
       if (data.user) {
-        router.push('/hk-order');
+        router.push(nextPath);
       } else {
         setMsg('注册失败，请稍后重试');
       }
@@ -180,6 +186,29 @@ export default function LoginPage() {
               placeholder="邮箱"
               className="w-full rounded-lg border border-gray-200 px-3 py-2"
             />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="密码（至少6位）"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={signInEmailPassword}
+                disabled={loading}
+                className="w-full py-2 rounded-lg bg-blue-600 text-white"
+              >
+                邮箱+密码登录
+              </button>
+              <button
+                onClick={signUpEmailPassword}
+                disabled={loading}
+                className="w-full py-2 rounded-lg bg-indigo-600 text-white"
+              >
+                邮箱+密码注册
+              </button>
+            </div>
             <button
               onClick={sendEmailLink}
               disabled={loading}
@@ -196,29 +225,6 @@ export default function LoginPage() {
               placeholder="手机号"
               className="w-full rounded-lg border border-gray-200 px-3 py-2"
             />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="密码（至少6位）"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={signInPhonePassword}
-                disabled={loading}
-                className="w-full py-2 rounded-lg bg-emerald-600 text-white"
-              >
-                手机号+密码登录
-              </button>
-              <button
-                onClick={signUpPhonePassword}
-                disabled={loading}
-                className="w-full py-2 rounded-lg bg-teal-600 text-white"
-              >
-                手机号+密码注册
-              </button>
-            </div>
             {phase === 'idle' ? (
               <button
                 onClick={sendPhoneCode}
