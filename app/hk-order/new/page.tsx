@@ -84,7 +84,7 @@ export default function NewOrderPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="text-gray-700 mb-4">请先登录后再下单</div>
-          <a href="/login" className="block w-full text-center py-2 rounded-lg bg-emerald-600 text-white">去登录</a>
+          <a href="/login?next=/hk-order/new" className="block w-full text-center py-2 rounded-lg bg-emerald-600 text-white">去登录</a>
         </div>
       </div>
     );

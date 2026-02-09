@@ -42,7 +42,7 @@ export default function HkOrderHome() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="text-gray-700 mb-4">请先登录后使用香港代购服务</div>
-          <Link href="/login" className="block w-full text-center py-2 rounded-lg bg-emerald-600 text-white">
+          <Link href="/login?next=/hk-order" className="block w-full text-center py-2 rounded-lg bg-emerald-600 text-white">
             去登录
           </Link>
         </div>

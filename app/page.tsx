@@ -40,7 +40,7 @@ const tools: Tool[] = [
     title: '香港代购服务',
     description: '登录后提交香港代购订单并管理订单状态。',
     icon: '🛍️',
-    href: '/login',
+    href: '/login?next=/hk-order',
     color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
   },
 ];
