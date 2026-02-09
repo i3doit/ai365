@@ -38,9 +38,9 @@ const tools: Tool[] = [
   {
     id: 'hk-order',
     title: '香港代购服务',
-    description: '提交香港代购订单，登录后可管理订单状态。',
+    description: '登录后提交香港代购订单并管理订单状态。',
     icon: '🛍️',
-    href: '/hk-order',
+    href: '/login',
     color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
   },
 ];
