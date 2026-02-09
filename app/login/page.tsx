@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [phase, setPhase] = useState<'idle' | 'phone_code'>('idle');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [mode, setMode] = useState<'email' | 'phone' | 'oauth'>('email');
 
   useEffect(() => {
     try {
@@ -176,9 +177,29 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
         <h1 className="text-xl font-semibold text-gray-900">登录</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMode('email')}
+            className={`px-3 py-1.5 rounded-lg text-sm ${mode==='email'?'bg-gray-900 text-white':'bg-gray-100 text-gray-700'}`}
+          >
+            邮箱登录
+          </button>
+          <button
+            onClick={() => setMode('phone')}
+            className={`px-3 py-1.5 rounded-lg text-sm ${mode==='phone'?'bg-gray-900 text-white':'bg-gray-100 text-gray-700'}`}
+          >
+            手机登录
+          </button>
+          <button
+            onClick={() => setMode('oauth')}
+            className={`px-3 py-1.5 rounded-lg text-sm ${mode==='oauth'?'bg-gray-900 text-white':'bg-gray-100 text-gray-700'}`}
+          >
+            第三方
+          </button>
+        </div>
         {msg && <div className="text-sm text-red-600">{msg}</div>}
-        <div className="space-y-3">
-          <div className="space-y-2">
+        {mode === 'email' && (
+          <div className="space-y-3">
             <input
               type="email"
               value={email}
@@ -217,7 +238,9 @@ export default function LoginPage() {
               邮箱登录链接
             </button>
           </div>
-          <div className="space-y-2">
+        )}
+        {mode === 'phone' && (
+          <div className="space-y-3">
             <input
               type="tel"
               value={phone}
@@ -252,14 +275,18 @@ export default function LoginPage() {
               </div>
             )}
           </div>
-          <button
-            onClick={signInGoogle}
-            disabled={loading}
-            className="w-full py-2 rounded-lg bg-gray-800 text-white"
-          >
-            使用 Gmail 快捷登录
-          </button>
-        </div>
+        )}
+        {mode === 'oauth' && (
+          <div className="space-y-3">
+            <button
+              onClick={signInGoogle}
+              disabled={loading}
+              className="w-full py-2 rounded-lg bg-gray-800 text-white"
+            >
+              使用 Gmail 快捷登录
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
