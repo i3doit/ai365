@@ -35,6 +35,14 @@ const tools: Tool[] = [
     href: '/red-packet',
     color: 'bg-gradient-to-br from-red-500 to-orange-600',
   },
+  {
+    id: 'hk-order',
+    title: '香港代购服务',
+    description: '提交香港代购订单，登录后可管理订单状态。',
+    icon: '🛍️',
+    href: '/hk-order',
+    color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+  },
 ];
 
 export default function Home() {
