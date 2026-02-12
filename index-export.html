@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI365 - 艾兜兜儿的工具箱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tool-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
+    </style>
+</head>
+<body class="bg-gray-50/50 min-h-screen">
+    <header class="pt-20 pb-12 px-6 text-center">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4">AI365</h1>
+        <p class="text-lg text-gray-500 max-w-2xl mx-auto">艾兜兜儿的 AI 提效工具导航站</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 pb-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 红包口令工具 -->
+            <a href="red-packet-export.html" class="tool-card group relative flex flex-col bg-white rounded-3xl p-6 shadow-sm border border-gray-100 transition-all duration-300">
+                <div class="absolute top-0 right-0 w-32 h-32 opacity-5 rounded-bl-full -mr-8 -mt-8 bg-gradient-to-br from-red-500 to-orange-600"></div>
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-lg bg-gradient-to-br from-red-500 to-orange-600 text-white">🧧</div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">红包口令工具</h2>
+                <p class="text-gray-500 leading-relaxed">同步红包助力口令，支持数据实时保存到数据库。</p>
+                <div class="mt-auto pt-6 flex items-center text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">
+                    立即打开 
+                    <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                </div>
+            </a>
+
+            <!-- 动态表情包 (待适配) -->
+            <div class="group relative flex flex-col bg-white/60 rounded-3xl p-6 border border-gray-100 opacity-80 cursor-not-allowed">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white">🎨</div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">动态表情包</h2>
+                <p class="text-gray-500 leading-relaxed">正在适配静态版本，敬请期待...</p>
+            </div>
+
+            <!-- 香港代购 (待适配) -->
+            <div class="group relative flex flex-col bg-white/60 rounded-3xl p-6 border border-gray-100 opacity-80 cursor-not-allowed">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">🛍️</div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">香港代购</h2>
+                <p class="text-gray-500 leading-relaxed">正在适配静态版本，敬请期待...</p>
+            </div>
+
+            <!-- 更多占位 -->
+            <div class="flex flex-col items-center justify-center bg-gray-50 rounded-3xl p-6 border-2 border-dashed border-gray-200 text-gray-400 min-h-[200px]">
+                <span class="text-2xl mb-2">🚀</span>
+                <span class="font-medium">更多工具接入中...</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-8 text-center text-sm text-gray-400">
+        © 2026 AI365 · 艾兜兜儿
+    </footer>
+</body>
+</html>
