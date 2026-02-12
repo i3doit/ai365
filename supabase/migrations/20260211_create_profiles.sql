@@ -1,5 +1,5 @@
 -- 创建 profiles 表，用于存储用户的公开信息
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE,
   avatar_url TEXT,
@@ -12,17 +12,18 @@ CREATE TABLE profiles (
 -- 为 profiles 表启用行级安全
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- 创建策略：用户可以查看所有 profiles
+-- 创建策略（先删除后创建，确保幂等性）
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON profiles;
 CREATE POLICY "Public profiles are viewable by everyone."
   ON profiles FOR SELECT
   USING ( true );
 
--- 创建策略：用户可以插入自己的 profile
+DROP POLICY IF EXISTS "Users can insert their own profile." ON profiles;
 CREATE POLICY "Users can insert their own profile."
   ON profiles FOR INSERT
   WITH CHECK ( auth.uid() = id );
 
--- 创建策略：用户可以更新自己的 profile
+DROP POLICY IF EXISTS "Users can update own profile." ON profiles;
 CREATE POLICY "Users can update own profile."
   ON profiles FOR UPDATE
   USING ( auth.uid() = id );
@@ -37,12 +38,14 @@ BEGIN
     new.raw_user_meta_data->>'username',
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url'
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 将触发器绑定到 auth.users 表的插入操作
+-- 将触发器绑定到 auth.users 表的插入操作（先删除后创建，解决触发器已存在的问题）
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
