@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>红包口令工具 - 艾兜兜儿</title>
+    <title>红包口令工具 - AI365</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -12,6 +12,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in-down { animation: fadeInDown 0.3s ease-out forwards; }
+        .line-clamp-4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -27,7 +28,7 @@
                 <span class="text-xl">✍️</span> 发布新口令
             </h2>
             <div class="space-y-4">
-                <textarea id="content" placeholder="粘贴红包口令内容..." class="w-full h-32 p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-500 transition-all resize-none text-gray-700" required></textarea>
+                <textarea id="content" placeholder="粘贴红包口令内容... (例如：元宝春节红包...)" class="w-full h-32 p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-500 transition-all resize-none text-gray-700" required></textarea>
                 <div class="flex flex-col md:flex-row gap-4">
                     <input id="creator" type="text" placeholder="你的昵称" value="艾兜兜儿" class="flex-1 p-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <button id="submitBtn" onclick="submitPacket()" class="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50">
@@ -55,6 +56,12 @@
         </div>
 
         <footer class="mt-12 py-8 border-t border-gray-200 text-center text-sm text-gray-500">
+            <div class="mb-4 flex justify-center gap-4 flex-wrap px-4 text-xs text-gray-400">
+                <a href="https://dkfile.com" target="_blank" class="hover:text-blue-600">DKFile.com</a>
+                <a href="https://dkfile.xyz" target="_blank" class="hover:text-blue-600">DKFile.xyz</a>
+                <a href="https://dkfile.istester.com" target="_blank" class="hover:text-blue-600">DKFile.istester.com</a>
+                <a href="https://deepseek.idoxu.com" target="_blank" class="hover:text-blue-600">DeepSeek 实战</a>
+            </div>
             <p>© 2026 艾兜兜儿 版权所有 · AI365</p>
             <p class="mt-2 flex justify-center gap-4">
                 <a href="index-export.html" class="hover:text-blue-600">返回主页</a>
@@ -71,27 +78,32 @@
     <script>
         const SUPABASE_URL = 'https://bmmtcrqvikvunvpsjjcx.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbXRjcnF2aWt2dW52cHNqamN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDY4ODUsImV4cCI6MjA4MzUyMjg4NX0.RkaxCuNYHFtS7uDCsIpbZrQ2mheShQNkAHfXyxQGxK0';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 重要：必须指定 schema 为 'api'
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            db: { schema: 'api' }
+        });
 
         let packets = [];
         let filter = 'active';
         let searchTerm = '';
 
         async function fetchPackets() {
-            const listEl = document.getElementById('packetList');
-            let query = _supabase.from('red_packets').select('*').order('created_at', { ascending: false });
-            
-            if (filter === 'active') {
-                query = query.gt('remaining_copies', 0);
-            }
+            try {
+                let query = _supabase.from('red_packets').select('*').order('created_at', { ascending: false });
+                
+                if (filter === 'active') {
+                    query = query.eq('status', 'active').gt('remaining_copies', 0);
+                }
 
-            const { data, error } = await query;
-            if (error) {
-                console.error('Fetch error:', error);
-                return;
+                const { data, error } = await query;
+                if (error) throw error;
+                packets = data || [];
+                renderPackets();
+            } catch (err) {
+                console.error('Fetch error:', err);
+                showToast('加载失败，请检查网络');
             }
-            packets = data;
-            renderPackets();
         }
 
         function renderPackets() {
@@ -109,20 +121,20 @@
             listEl.innerHTML = filtered.map(p => `
                 <div class="group bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
                     <div class="flex items-center gap-3 mb-4">
-                        <img src="${p.creator_avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + p.creator_name}" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 object-cover">
-                        <div>
-                            <div class="font-semibold text-gray-900 text-sm">${p.creator_name}</div>
+                        <img src="${p.creator_avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(p.creator_name)}" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 object-cover">
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-900 text-sm truncate">${p.creator_name}</div>
                             <div class="text-[10px] text-gray-400">${new Date(p.created_at).toLocaleString()}</div>
                         </div>
                     </div>
                     <div class="bg-gray-50 rounded-xl p-3 text-gray-700 text-sm break-all font-mono mb-4 leading-relaxed line-clamp-4">
-                        ${p.content}
+                        ${p.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                     </div>
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded-lg text-amber-700 text-[11px] font-medium border border-amber-100">
-                            <span>🔥</span> 剩余 ${p.remaining_copies} 次
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 ${p.remaining_copies > 0 ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-100 text-gray-500 border-gray-200'} rounded-lg text-[11px] font-medium border">
+                            <span>${p.remaining_copies > 0 ? '🔥' : '✅'}</span> ${p.remaining_copies > 0 ? '剩余 ' + p.remaining_copies + ' 次' : '已领完'}
                         </div>
-                        <button onclick="copyPacket('${p.id}', '${p.content.replace(/'/g, "\\'")}')" class="px-4 py-1.5 bg-gray-900 text-white text-xs rounded-lg hover:bg-black transition-colors">
+                        <button onclick="copyPacket('${p.id}', \`${p.content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)" class="px-4 py-1.5 bg-gray-900 text-white text-xs rounded-lg hover:bg-black transition-colors">
                             复制口令
                         </button>
                     </div>
@@ -135,45 +147,65 @@
             const creator = document.getElementById('creator').value.trim();
             const btn = document.getElementById('submitBtn');
 
-            if (!content || !creator) {
-                showToast('请填写内容和昵称');
+            if (!content) {
+                showToast('请输入口令');
+                return;
+            }
+
+            // 放宽限制：只要长度超过5且包含基本特征，或者由用户主动输入
+            const text = content.toLowerCase();
+            const isYuanbao = text.includes('元宝') || text.includes('元寶') || text.includes('hu9190');
+            if (content.length < 5) {
+                showToast('口令内容太短了');
                 return;
             }
 
             btn.disabled = true;
             btn.innerText = '发布中...';
 
-            const { error } = await _supabase.from('red_packets').insert([
-                { 
-                    content, 
-                    creator_name: creator, 
-                    creator_avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=' + creator,
-                    remaining_copies: 3
-                }
-            ]);
+            try {
+                const { error } = await _supabase.from('red_packets').insert([
+                    { 
+                        content, 
+                        creator_name: creator || '匿名用户', 
+                        creator_avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(creator || 'anon'),
+                        remaining_copies: 3,
+                        status: 'active'
+                    }
+                ]);
 
-            if (error) {
-                showToast('发布失败: ' + error.message);
-            } else {
+                if (error) throw error;
+
                 showToast('🎉 发布成功！');
                 document.getElementById('content').value = '';
                 fetchPackets();
+            } catch (err) {
+                showToast('发布失败: ' + (err.message || '请检查网络'));
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '发布助力';
             }
-
-            btn.disabled = false;
-            btn.innerText = '发布助力';
         }
 
         async function copyPacket(id, content) {
             try {
                 await navigator.clipboard.writeText(content);
-                showToast('✅ 口令已复制，快去助力吧');
+                showToast('✅ 口令已复制');
                 
-                // 减少次数
-                await _supabase.rpc('decrement_packet_copies', { packet_id: id });
-                fetchPackets();
+                // 简单的减少次数逻辑 (这里可以调用 RPC 或直接 update)
+                // 为了简单起见，这里直接尝试减少
+                const { data: packet } = await _supabase.from('red_packets').select('remaining_copies').eq('id', id).single();
+                if (packet && packet.remaining_copies > 0) {
+                    const newCount = packet.remaining_copies - 1;
+                    await _supabase.from('red_packets').update({ 
+                        remaining_copies: newCount,
+                        status: newCount === 0 ? 'completed' : 'active'
+                    }).eq('id', id);
+                    fetchPackets();
+                }
             } catch (err) {
-                showToast('复制失败，请手动选择复制');
+                showToast('复制失败');
             }
         }
 

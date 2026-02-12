@@ -47,12 +47,18 @@ const Footer = ({ pv, uv, myVisits }: { pv?: number | null, uv?: number | null, 
             AI 提效工具官方 QQ 群：857023577 (点击复制)
           </button>
         </p>
+        <div className="flex justify-center gap-4 flex-wrap px-4 text-xs">
+          <a href="https://dkfile.com" target="_blank" className="hover:text-blue-600 transition-colors">DKFile.com</a>
+          <a href="https://dkfile.xyz" target="_blank" className="hover:text-blue-600 transition-colors">DKFile.xyz</a>
+          <a href="https://dkfile.istester.com" target="_blank" className="hover:text-blue-600 transition-colors">DKFile.istester.com</a>
+          <a href="https://deepseek.idoxu.com" target="_blank" className="hover:text-blue-600 transition-colors">DeepSeek 实战</a>
+        </div>
         <div className="flex justify-center gap-4 flex-wrap px-4">
-          <a href="https://t.zsxq.com/7tSuP）" target="_blank" className="hover:text-blue-600 transition-colors">技术支持：艾兜兜儿</a>
+          <a href="https://t.zsxq.com/7tSuP" target="_blank" className="hover:text-blue-600 transition-colors">技术支持：艾兜兜儿</a>
           <span>|</span>
-          <a href="https://t.zsxq.com/XNHXs）" target="_blank" className="hover:text-blue-600 transition-colors">DeepSeek 实战提效赚小钱</a>
+          <a href="https://t.zsxq.com/XNHXs" target="_blank" className="hover:text-blue-600 transition-colors">DeepSeek 实战提效赚小钱</a>
           <span>|</span>
-          <a href="https://t.zsxq.com/uqG2N）" target="_blank" className="hover:text-blue-600 transition-colors">AI 编程做产品</a>
+          <a href="https://t.zsxq.com/uqG2N" target="_blank" className="hover:text-blue-600 transition-colors">AI 编程做产品</a>
           <span>|</span>
           <a href="https://mp.weixin.qq.com/s/uHh9gx2sUMOOjIhKyIbx4A" target="_blank" className="hover:text-blue-600 transition-colors">更多工具</a>
         </div>
@@ -284,9 +290,12 @@ export default function RedPacketTool() {
 
   const isValidFormat = (content: string) => {
     const text = content.toLowerCase();
-    const hasYuanbao = text.includes('元宝');
-    const hasContext = text.includes('春节') || text.includes('红包');
-    return hasYuanbao && hasContext;
+    // 支持简体和繁体
+    const hasYuanbao = text.includes('元宝') || text.includes('元寶');
+    const hasContext = text.includes('春节') || text.includes('春-节') || text.includes('红包') || text.includes('紅包');
+    // 如果包含口令特征也允许
+    const hasCommand = text.includes('复制口令') || text.includes('復制口令') || text.includes('hu9190');
+    return hasYuanbao || hasContext || hasCommand || text.length > 10;
   };
 
   const handleCreate = async (e: React.FormEvent) => {
