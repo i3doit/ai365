@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
-  // 新增：构建时跳过 TypeScript 错误检查
+  // 新增：构建时跳过 TypeScript 错误检查。
   typescript: {
     ignoreBuildErrors: true,
   },
